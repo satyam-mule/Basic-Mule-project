@@ -1,0 +1,5 @@
+{
+	"FailedReocords Count": payload.failedRecords,
+	"Succeeded Records Count": payload.loadedRecords,
+	"instanceId": payload.batchJobInstanceId
+}

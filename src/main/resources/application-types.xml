@@ -1,0 +1,76 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="output-survey-data" format="json">
+      <types:shape format="weave" example="examples/survey-sample-data1.json"><![CDATA[%dw 2.0
+
+type output_survey_data = Array<{|  Year: String,   Industry_aggregation_NZSIOC: String,   Industry_code_NZSIOC: String,   Industry_name_NZSIOC: String,   Units: String,   Variable_code: String,   Variable_name: String,   Variable_category: String,   Value: String|}> {"example": "[{\\\"Year\\\":\\\"2013\\\",\\\"Industry_aggregation_NZSIOC\\\":\\\"Level 3\\\",\\\"Industry_code_NZSIOC\\\":\\\"ZZ11\\\",\\\"Industry_name_NZSIOC\\\":\\\"Food product manufacturing\\\",\\\"Units\\\":\\\"Percentage\\\",\\\"Variable_code\\\":\\\"H41\\\",\\\"Variable_name\\\":\\\"Liabilities structure\\\",\\\"Variable_category\\\":\\\"Financial ratios\\\",\\\"Value\\\":\\\"46\\\"}]"}
+
+]]></types:shape>
+    </types:type>
+    <types:type name="input-csv" format="csv">
+      <types:shape format="weave" example="examples/annual-enterprise-survey-2021-financial-year-provisional-csv.csv"><![CDATA[%dw 2.0
+
+type input_csv = Array<{|  Year: String,   Industry_aggregation_NZSIOC: String,   Industry_code_NZSIOC: String,   Industry_name_NZSIOC: String,   Units: String,   Variable_code: String,   Variable_name: String,   Variable_category: String,   Value: String|}> {"isQuotedString": "false",
+"header": "true",
+"headerLineNumber": "0"}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
+    <types:type name="survey-insert-sample-data" format="json">
+      <types:shape format="weave" example="examples/survey-sample-data1-1.json"><![CDATA[%dw 2.0
+
+type survey_insert_sample_data = Array<{|  Year: String,   Industry_aggregation_NZSIOC: String,   Industry_code_NZSIOC: String,   Industry_name_NZSIOC: String,   Units: String,   Variable_code: String,   Variable_name: String,   Variable_category: String,   Value: String|}> {"example": "[{\\\"Year\\\":\\\"2013\\\",\\\"Industry_aggregation_NZSIOC\\\":\\\"Level 3\\\",\\\"Industry_code_NZSIOC\\\":\\\"ZZ11\\\",\\\"Industry_name_NZSIOC\\\":\\\"Food product manufacturing\\\",\\\"Units\\\":\\\"Percentage\\\",\\\"Variable_code\\\":\\\"H41\\\",\\\"Variable_name\\\":\\\"Liabilities structure\\\",\\\"Variable_category\\\":\\\"Financial ratios\\\",\\\"Value\\\":\\\"46\\\"}]"}
+
+]]></types:shape>
+    </types:type>
+    <types:type name="stats-output" format="json">
+      <types:shape format="weave" example="examples/survey-sample-data1 - Copy.json"><![CDATA[%dw 2.0
+
+type stats_output = {|
+  "FailedReocords Count": String, 
+  "Succeeded Records Count": String, 
+  instanceId: String
+|} {"example": "{\\\"FailedReocords Count\\\":\\\"payload.failedRecords\\\",\\\"Succeeded Records Count\\\":\\\"payload.loadedRecords\\\",\\\"instanceId\\\":\\\"payload.batchJobInstanceId\\\"}"}
+
+]]></types:shape>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#1560e2cf-dd69-44ed-95ca-58e26a76b939">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="input-csv"/>
+        </types:message>
+      </types:input-event>
+      <types:output-event>
+        <types:message>
+          <types:payload type="output-survey-data"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#b34a3c26-f964-455e-b9ab-dba736dd37ac">
+    <types:processor-declaration>
+      <types:output-event>
+        <types:message>
+          <types:payload type="survey-insert-sample-data"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#cbd6e0bc-ebd8-4527-8beb-7a3139283873">
+    <types:processor-declaration>
+      <types:output-event>
+        <types:message>
+          <types:payload type="stats-output"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>

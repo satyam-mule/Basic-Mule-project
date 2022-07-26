@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="16c403b3-8bbb-4972-811c-d490bca460e7" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="d7b0359e-9d19-42e4-8237-238de8f0817a" >
+		<file:connection workingDir="C:\Users\SatyamAmrita\Desktop\FileDetails\Inbound" />
+	</file:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="e2c47434-a4ce-4ed2-bf86-0457938a34e7" >
+		<db:oracle-connection host="localhost" user="SYSTEM" password="Tiger" instance="xe" />
+	</db:config>
+	<flow name="bulk-insert" doc:id="fcf96b25-ec32-4e8c-9e06-70d94cb0cc54" >
+		<batch:aggregator doc:name="Batch Aggregator" doc:id="71feb7ff-c9a9-41b4-8048-5951b98f4fb2" streaming="true">
+						<db:bulk-insert doc:name="Bulk insert" doc:id="87103e2c-1ec0-4cef-a5ff-71ec55b1985c" config-ref="Database_Config">
+							<db:sql><![CDATA[insert into ANNUAL_ENTERPRISE_SURVEY
+	(Year,
+	Industry_aggregation_NZSIOC,
+	Industry_code_NZSIOC,
+	Industry_name_NZSIOC,
+	Units,
+	Variable_code,
+	Variable_name,
+	Variable_category,
+	Value)
+	values
+	(:Year,
+	:Industry_aggregation_NZSIOC,
+	:Industry_code_NZSIOC,
+	:Industry_name_NZSIOC,
+	:Units,
+	:Variable_code,
+	:Variable_name,
+	:Variable_category,
+	:Value)]]></db:sql>
+						</db:bulk-insert>
+					</batch:aggregator>
+	</flow>
+	<flow name="file-processing-flowFlow" doc:id="c9815061-a3e6-4e71-832b-d9d14c0b93de" >
+		<http:listener doc:name="Listener" doc:id="b9ceec17-8580-4ea4-9c09-a15abc4fbe28" config-ref="HTTP_Listener_config" path="/read-survey-file"/>
+		<file:read doc:name="Read" doc:id="3d4d9626-29ac-4608-8fc1-ca99d0530dc3" config-ref="File_Config" path="C:\Users\SatyamAmrita\Desktop\FileDetails\Inbound\annual-enterprise-survey-2021-financial-year-provisional-csv.csv" outputMimeType="application/csv"/>
+		<ee:transform doc:name="Transform Message" doc:id="1560e2cf-dd69-44ed-95ca-58e26a76b939" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map ((item,index) ->
+	{
+	Year: item.Year as String default null,
+	Industry_aggregation_NZSIOC: item.Industry_aggregation_NZSIOC,
+	Industry_code_NZSIOC: item.Industry_code_NZSIOC,
+	Industry_name_NZSIOC: item.Industry_name_NZSIOC,
+	Units: item.Units,
+	Variable_code: item.Variable_code,
+	Variable_name: item.Variable_name,
+	Variable_category: item.Variable_category,
+	Value: item.Value
+}
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="file-processing-flowBatch_Job" doc:id="d88bbc99-ef50-4498-88a7-1063a1bbc446" blockSize="1000">
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="506e87f3-eb57-43dc-ada5-48fb0da86eb5" acceptPolicy="ALL">
+					<ee:transform doc:name="Transform Message" doc:id="b34a3c26-f964-455e-b9ab-dba736dd37ac">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+	Year: payload.Year as String,
+	Industry_aggregation_NZSIOC: payload.Industry_aggregation_NZSIOC,
+	Industry_code_NZSIOC: payload.Industry_code_NZSIOC,
+	Industry_name_NZSIOC: payload.Industry_name_NZSIOC,
+	Units: payload.Units,
+	Variable_code: payload.Variable_code,
+	Variable_name: payload.Variable_name,
+	Variable_category: payload.Variable_category,
+	Value: payload.Value
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					<db:insert doc:name="Insert" doc:id="8eabafb7-6f3f-498a-97bc-a89d2c601e9b" config-ref="Database_Config">
+						<db:sql ><![CDATA[insert into ANNUAL_ENTERPRISE_SURVEY
+	(Year,
+	Industry_aggregation_NZSIOC,
+	Industry_code_NZSIOC,
+	Industry_name_NZSIOC,
+	Units,
+	Variable_code,
+	Variable_name,
+	Variable_category,
+	Value)
+	values
+	(:Year,
+	:Industry_aggregation_NZSIOC,
+	:Industry_code_NZSIOC,
+	:Industry_name_NZSIOC,
+	:Units,
+	:Variable_code,
+	:Variable_name,
+	:Variable_category,
+	:Value)]]></db:sql>
+						<db:input-parameters ><![CDATA[#[payload]]]></db:input-parameters>
+					</db:insert>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete>
+				<ee:transform doc:name="Transform Message" doc:id="cbd6e0bc-ebd8-4527-8beb-7a3139283873">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>
